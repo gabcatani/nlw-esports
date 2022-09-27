@@ -1,15 +1,18 @@
 import * as Dialog from "@radix-ui/react-dialog"
+import axios from "axios"
 import * as Checkbox from '@radix-ui/react-checkbox';
 import { Check, GameController} from "phosphor-react"
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import { InputForm } from "../InputForm"
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { GameInterface } from "../../pages/Home";
 
 export function DialogPortal() {
 
     const [games, setGames] = useState<GameInterface[]>([])
-    const [weekDays, setWeekDays] = useState<string[]>([]);
+    const [weekDays, setWeekDays] = useState<string[]>([])
+    const [useVoiceChannel, setUseVoiceChannel] = useState(false);
+
 
     useEffect(() => {
         fetch('http://localhost:3000/games')
@@ -19,13 +22,44 @@ export function DialogPortal() {
         })
     }, [])
 
-    
+    function handleCreateAd(event: FormEvent) {
+        event.preventDefault()
+
+        const formData = new FormData(event.target as HTMLFormElement);
+        const data = Object.fromEntries(formData);
+
+        console.log(useVoiceChannel)
+        console.log(data)
+
+        if (!data.name) {
+            return;
+          }
+          
+          try {
+            axios.post(`http://localhost:3000/games/${data.game}/ads`, {
+              name: data.name,
+              yearsPlaying: Number(data.yearsPlaying),
+              discord: data.discord,
+              weekDays: weekDays.map(Number),
+              hourStart: data.hourStart,
+              hourEnd: data.hourEnd,
+              useVoiceChannel,
+            });
+      
+            alert('Anúncio criado com sucesso!');
+          } catch (err) {
+            
+            alert('Erro ao criar o anúncio!');
+            console.error(err);
+          }
+    }
+
     return (
         <Dialog.Portal>
         <Dialog.Overlay className="bg-black/60 inset-0 fixed">
             <Dialog.Content className="fixed bg-[#2A2634] py-8 px-10 text-white top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg w-[480px] shadow-lg shadow-black/25">
                 <Dialog.Title className="text-3xl font-black">Publique um anúncio</Dialog.Title>
-                    <form className="mt-8 flex flex-col gap-4">
+                    <form onSubmit={handleCreateAd} className="mt-8 flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
                         <label
                             htmlFor="game"
@@ -49,6 +83,7 @@ export function DialogPortal() {
                         <div className="flex flex-col gap-2">
                             <label htmlFor="name">Qual o seu nickname?</label>
                             <InputForm 
+                                name="name"
                                 id="name" 
                                 placeholder="Como te chamam dentro do game?"
                             />
@@ -57,11 +92,11 @@ export function DialogPortal() {
                         <div className="grid grid-cols-2 gap-6">
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="yearsPlaying">Joga a quantos anos?</label>
-                                <InputForm id="yearsPlaying"  type="number" placeholder="Tudo bem ser ZERO"/>
+                                <InputForm name="yearsPlaying" id="yearsPlaying"  type="number" placeholder="Tudo bem ser ZERO"/>
                             </div>
                             <div className="flex flex-col gap-2">
                             <label htmlFor="discord">Qual o seu discord?</label>
-                                <InputForm id="discord" type="text" placeholder="Usuário #0000"/>
+                                <InputForm name="discord" id="discord" type="text" placeholder="Usuário #0000"/>
                             </div>
                         </div>
 
@@ -128,13 +163,21 @@ export function DialogPortal() {
                             <div className="flex flex-col gap-2 flex-1">
                                 <label htmlFor="hourStart">Qual horário do dia</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                <InputForm type="time" id="hourStart" placeholder="De"/>
-                                <InputForm type="time" id="hourEnd" placeholder="Até"/>
+                                <InputForm type="time" name="hoursStart" id="hourStart" placeholder="De"/>
+                                <InputForm type="time" name="hoursEnd" id="hourEnd" placeholder="Até"/>
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-2 flex items-center gap-2 text-sm">
-                            <Checkbox.Root 
+                        <label className="mt-2 flex items-center gap-2 text-sm">
+                            <Checkbox.Root
+                                checked={useVoiceChannel}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        setUseVoiceChannel(true)
+                                }else {
+                                    setUseVoiceChannel(false)
+                                }
+                            }}
                                 className="w-6 h-6 p-1 rounded bg-zinc-900"
                             >
                                 <Checkbox.Indicator>
@@ -142,7 +185,7 @@ export function DialogPortal() {
                                 </Checkbox.Indicator>
                             </Checkbox.Root>
                                 Costumo me conectar no chat de voz
-                        </div>
+                        </label>
                         <footer className="mt-4 flex justify-end gap-4">
                             <Dialog.Close
                                 type="button"
